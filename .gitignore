@@ -1,0 +1,33 @@
+# Virtual environment
+.venv/
+venv/
+env/
+# Secrets
+.env
+.env.*
+!.env.example
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+# Packaging
+build/
+dist/
+*.egg-info/
+*.egg
+# Testing / tooling
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+# Local database
+*.db
+*.sqlite3
+# Logs
+*.log
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
