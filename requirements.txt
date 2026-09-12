@@ -3,3 +3,4 @@ openai
 fastapi
 uvicorn
 pydantic
+sqlalchemy
