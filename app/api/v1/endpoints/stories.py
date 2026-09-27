@@ -1,134 +1,96 @@
-import uuid
-import models
-from fastapi import APIRouter, Depends, HTTPException, status
-from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryCreateRequest, StoryUpdateRequest, ChapterListSchema
+from app.api.deps import get_current_user
+from fastapi import APIRouter, Depends, status
+from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryCreateRequest, StoryUpdateRequest, ChapterListSchema, ChapterGenerationSchema, StoryOptionSchema
 from sqlalchemy.orm import Session
-from app.services.ai_service import ai_service
 from typing import List
-from database import engine, get_db
-
-models.Base.metadata.create_all(bind=engine)
+from database import get_db
+from app.services.story_service import StoryService
+import app.database.models as models
 
 router = APIRouter()
 
+def get_story_service(db: Session = Depends(get_db)) -> StoryService:
+    return StoryService(db)
 
 ### Get all stories: GET /api/v1/stories ###
 @router.get("/", response_model=List[StoryListSchema])
-async def get_all_stories(db: Session = Depends(get_db)):
-    stories = db.query(models.Story).all()
-    return stories
+def get_all_stories(
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> List[StoryListSchema]:
+    return story_service.get_all_stories(user=current_user)
 
 ### Get a story by id: GET /api/v1/stories/{story_id} ###
 @router.get("/{story_id}", response_model=StoryDetailSchema)
-def get_story_by_id(story_id: str, db: Session = Depends(get_db)):
-    story = db.query(models.Story).filter(models.Story.id == story_id).first()
-    if not story:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Story not found"
-        )
-    return story
+def get_story_by_id(
+    story_id: str, 
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> StoryDetailSchema:
+    return story_service.get_story_by_id(story_id, user=current_user)
 
 ### Update a story: PATCH /api/v1/stories/{story_id} ###
 @router.patch("/{story_id}", response_model=StoryDetailSchema)
-def update_story(story_id: str, payload: StoryUpdateRequest, db: Session = Depends(get_db)):
-    story = db.query(models.Story).filter(models.Story.id == story_id).first()
-    if not story:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Story not found"
-        )
-    story.title = payload.title
-    story.description = payload.description
-    # db.commit()
-    return story    
+def update_story(
+    story_id: str, 
+    payload: StoryUpdateRequest, 
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> StoryDetailSchema:
+    return story_service.update_story(story_id, payload, user=current_user)
 
 ### Create a story: POST /api/v1/stories ###
 @router.post("/", response_model=StoryDetailSchema)
-async def create_story(payload: StoryCreateRequest, db: Session = Depends(get_db)):
-    try:
-        story = await ai_service.generate_story(
-            hero=payload.hero,
-            setting=payload.setting,
-            style=payload.style
-        )
-
-        new_story = models.Story(
-            id=str(uuid.uuid4()),
-            title=story.title,
-            author=story.author,
-            category=story.category,
-            summary=story.summary,
-            reading_time_minutes=story.reading_time_minutes,
-            emoji=story.emoji,
-            accent_color=story.accent_color,
-            is_favorite=story.is_favorite,
-            chapters=[models.StoryChapter(content=chapter.content) for chapter in story.chapters],
-            created_at=story.created_at,
-        )
-
-        db.add(new_story)
-        db.commit()
-
-        return new_story
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating story: {str(e)}")
+async def create_story(
+    payload: StoryCreateRequest,
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> StoryDetailSchema:
+    return await story_service.create_story(payload, user=current_user)   
 
 ### Delete a story: DELETE /api/v1/stories/{story_id} ###
-@router.delete("/{story_id}", response_model=StoryDetailSchema)
-def delete_story(story_id: str, db: Session = Depends(get_db)):
-    story = db.query(models.Story).filter(models.Story.id == story_id).first()
-    if not story:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Story not found"
-        )
-    db.delete(story)
-    db.commit()
-    return story
+@router.delete("/{story_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_story(
+    story_id: str, 
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> None:
+    story_service.delete_story(story_id, user=current_user)
 
 ### Generate next chapter for a story: POST /api/v1/stories/{story_id}/continue ###
-@router.post("/{story_id}/continue", response_model=ChapterListSchema)
-async def generate_next_chapter(story_id: str, db: Session = Depends(get_db)):
-    chapter = db.query(models.StoryChapter).filter(models.StoryChapter.story_id == story_id).all()
-    if not chapter:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Chapter not found"
-        )
-    # chapter = await ai_service.generate_next_chapter(
-    #     story_id=story_id,
-    #     chapter_id=chapter.id
-    # )
-    return chapter
+@router.post("/{story_id}/continue", response_model=ChapterGenerationSchema)
+async def generate_next_chapter(
+    story_id: str,
+    payload: StoryOptionSchema,  # <- Принимаем тело запроса с опцией продолжения
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> ChapterGenerationSchema:
+    return await story_service.generate_next_chapter(story_id, user=current_user, payload=payload)
 
 ### Get all chapters of story: GET /api/v1/stories/{story_id}/chapters ###
 @router.get("/{story_id}/chapters", response_model=List[ChapterListSchema])
-def get_all_chapters(story_id: str, db: Session = Depends(get_db)):
-    chapters = db.query(models.StoryChapter).filter(models.StoryChapter.story_id == story_id).all()
-    print(chapters)
-    return chapters
+def get_all_chapters(
+    story_id: str, 
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> List[ChapterListSchema]:
+    return story_service.get_all_chapters(story_id, user=current_user)
 
 ### Get chapter of story by ID: GET /api/v1/stories/{story_id}/chapters/{chapter_id} ###
 @router.get("/{story_id}/chapters/{chapter_id}", response_model=ChapterListSchema)
-def get_chapter_by_id(story_id: str, chapter_id: str, db: Session = Depends(get_db)):
-    chapter = db.query(models.StoryChapter).filter(models.StoryChapter.story_id == story_id, models.StoryChapter.id == chapter_id).first()
-    if not chapter:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Chapter not found"
-        )
-    return chapter
+def get_chapter_by_id(
+    story_id: str, 
+    chapter_id: str,
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> ChapterListSchema: 
+    return story_service.get_chapter_by_id(story_id, chapter_id, user=current_user)
 
 ### Add/Remove story from favorites: POST /api/v1/stories/{story_id}/toggle-favorites ###
 @router.post("/{story_id}/toggle-favorites", response_model=StoryDetailSchema)
-def toogle_favorites(story_id: str, db: Session = Depends(get_db)):
-    story = db.query(models.Story).filter(models.Story.id == story_id).first()
-    if not story:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Story not found"
-        )
-    story.is_favorite = not story.is_favorite
-    # db.commit()
-    return story
+def toogle_favorites(
+    story_id: str, 
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> StoryDetailSchema:
+    return story_service.toogle_favorites(story_id, user=current_user)

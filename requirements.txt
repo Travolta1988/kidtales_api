@@ -1,6 +1,0 @@
-python-dotenv
-openai
-fastapi
-uvicorn
-pydantic
-sqlalchemy
