@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status
 from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryCreateRequest, StoryUpdateRequest, ChapterListSchema, ChapterGenerationSchema, StoryOptionSchema
 from sqlalchemy.orm import Session
 from typing import List
-from database import get_db
+from app.database.database import get_db
 from app.services.story_service import StoryService
 import app.database.models as models
 

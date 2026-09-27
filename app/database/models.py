@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, Text, ForeignKey, Boolean, DateT
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func, text
 from sqlalchemy.dialects.postgresql import JSONB
-from database import Base
+from app.database.database import Base
 
 class Story(Base):
     __tablename__ = "stories"

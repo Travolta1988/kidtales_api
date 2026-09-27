@@ -7,7 +7,7 @@ from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryCreateReq
 from sqlalchemy.orm import Session
 from app.services.ai_service import ai_service, AIError
 from typing import List
-from database import get_db
+from app.database.database import get_db
 
 logger = logging.getLogger(__name__)
 

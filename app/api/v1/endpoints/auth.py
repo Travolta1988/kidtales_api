@@ -1,7 +1,7 @@
 from app.api.deps import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
 from app.schemas.user import Token, UserCreate, UserResponse
-from database import get_db
+from app.database.database import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 import app.database.models as models

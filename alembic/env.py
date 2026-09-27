@@ -3,8 +3,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from database import Base, SQLALCHEMY_DATABASE_URL
-import models  # registers Story / StoryChapter on Base.metadata
+from app.database.database import Base, SQLALCHEMY_DATABASE_URL
+import app.database.models  # registers Story / StoryChapter on Base.metadata
 
 config = context.config
 config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL.replace("%", "%%"))

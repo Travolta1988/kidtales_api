@@ -1,7 +1,7 @@
 import jwt
 from app.core.security import ALGORITHM, SECRET_KEY
 import app.database.models as models
-from database import get_db
+from app.database.database import get_db
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
