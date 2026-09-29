@@ -14,11 +14,10 @@ class Story(Base):
     hero = Column(String, nullable=False)
     setting = Column(String, nullable=False)
     style = Column(String, nullable=False)
-    author = Column(String, nullable=False)
     category = Column(String, nullable=False)
     full_story_context = Column(Text, nullable=False)
+    short_story_context = Column(String, nullable=False)
     reading_time_minutes = Column(Integer, nullable=False)
-    emoji = Column(String, nullable=False)
     is_favorite = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
@@ -62,3 +61,9 @@ class User(Base):
     stories = relationship(
         "Story", back_populates="owner", cascade="all, delete-orphan"
     )
+
+class StorySettings(Base):
+    __tablename__ = "story_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    catalog = Column(JSONB, nullable=False)

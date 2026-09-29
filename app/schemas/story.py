@@ -1,3 +1,5 @@
+from app.schemas.story_settings import Language
+from enum import Enum
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import List, Optional
@@ -30,14 +32,13 @@ class ChapterSchema(BaseModel):
 class StoryListSchema(BaseModel):
     id: str
     title: str
-    author: str
     hero: str
     setting: str
     style: str
     category: str
     full_story_context: str
+    short_story_context: str
     reading_time_minutes: int
-    emoji: str
     is_favorite: bool
 
     class Config:
@@ -51,10 +52,43 @@ class StoryDetailSchema(StoryListSchema):
         from_attributes = True
 
 # Create story schema
+class HeroId(str, Enum):
+    princess = "princess"
+    fox = "fox"
+    dragon = "dragon"
+    wizard = "wizard"
+    cat = "cat"
+    knight = "knight"
+    fairy = "fairy"
+    boy = "boy"
+    girl = "girl"
+    giant = "giant"
+
+class LocationId(str, Enum):
+    forest = "forest"
+    castle = "castle"
+    village = "village"
+    mountain = "mountain"
+    clouds = "clouds"
+    cave = "cave"
+    library = "library"
+    oasis = "oasis"
+    ice = "ice"
+    garden = "garden"
+
+class StyleId(str, Enum):
+    andersen = "andersen"
+    perrault = "perrault"
+    grimm = "grimm"
+    comic = "comic"
+    bedtime = "bedtime"
+    modern = "modern"
+
 class StoryCreateRequest(BaseModel):
-    hero: str
-    setting: str
-    style: str
+    language: Language
+    hero: HeroId
+    setting: LocationId
+    style: StyleId
 
     class Config:
         from_attributes = True
@@ -86,14 +120,13 @@ class ChapterListSchema(BaseModel):
 class StoryResponse(BaseModel):
     id: str
     title: str
-    author: str
     hero: str
     setting: str
     style: str
     category: str
     full_story_context: str
+    short_story_context: str
     reading_time_minutes: int
-    emoji: str
     is_favorite: bool
     chapters: List[ChapterListSchema] = []
     created_at: datetime
@@ -134,9 +167,8 @@ class GeneratedChapter(BaseModel):
 
 class GeneratedStory(BaseModel):
     title: str
-    author: str
     category: str
-    emoji: str
     reading_time_minutes: int
+    short_story_context: str
     full_story_context: str
     chapters: list[GeneratedChapter]        

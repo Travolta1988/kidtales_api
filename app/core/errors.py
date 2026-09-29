@@ -8,6 +8,8 @@ ERRORS = {
     "STORY_DELETION_ERROR": """Failed to delete story""",
     "STORY_UPDATE_ERROR": """Failed to update story""",
     "INSUFFICIENT_CREDITS_ERROR": """Insufficient credits to generate story""",
+    "USER_NOT_FOUND_ERROR": """User not found""",
+    "STORY_SETTINGS_NOT_FOUND_ERROR": """Story settings not found""",
 }
 
 AI_ERRORS = {

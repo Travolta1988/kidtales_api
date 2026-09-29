@@ -1,9 +1,11 @@
 import uuid
+from datetime import datetime
 import app.database.models as models
 import logging
 from app.core.errors import ERRORS, AI_ERRORS
 from fastapi import Depends, HTTPException, status
-from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryCreateRequest, StoryUpdateRequest, ChapterListSchema, ChapterGenerationSchema, StoryOptionSchema
+from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryUpdateRequest, ChapterListSchema, ChapterGenerationSchema, StoryOptionSchema
+from app.schemas.story_settings import ResolvedStoryInput
 from sqlalchemy.orm import Session
 from app.services.ai_service import ai_service, AIError
 from typing import List
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class StoryService:
     def __init__(self, db: Session = Depends(get_db)):
-        self.db = db
+        self.db = db   
 
     def get_all_stories(self, user: models.User) -> List[StoryListSchema]:
         return self.db.query(models.Story).all()
@@ -28,7 +30,8 @@ class StoryService:
         return story
 
     def update_story(self, story_id: str, payload: StoryUpdateRequest, user: models.User) -> StoryDetailSchema:
-        story = self.db.query(models.Story).filter(models.Story.id == story_id).first()
+        story = self.db.query(models.Story).filter(models.Story.id == story_id, models.Story.user_id == user.id).first()
+        
         if not story:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, 
@@ -47,7 +50,7 @@ class StoryService:
         self.db.refresh(story)
         return story
 
-    async def create_story(self, payload: StoryCreateRequest, user: models.User) -> StoryDetailSchema:
+    async def create_story(self, user: models.User, payload: ResolvedStoryInput) -> StoryDetailSchema:
         # Check if user has sufficient credits
         if user.subscription_credits + user.purchased_credits < 1:
             raise HTTPException(
@@ -92,12 +95,12 @@ class StoryService:
             hero=payload.hero,
             setting=payload.setting,
             style=payload.style,
-            author=story.author,
             category=story.category,
             full_story_context=story.full_story_context,
+            short_story_context=story.short_story_context,
             reading_time_minutes=story.reading_time_minutes,
-            emoji=story.emoji,
             is_favorite=False,
+            created_at=story.created_at or datetime.now(),
             chapters=[
                 models.StoryChapter(
                     chapter_number=index,

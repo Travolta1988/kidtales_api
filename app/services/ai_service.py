@@ -1,7 +1,7 @@
 from app.schemas.story import StoryResponse, ChapterGenerationSchema
 from openai import AsyncOpenAI, APIError
 from app.core.config import OPENAI_API_KEY
-from app.core.constants import AI_MODEL, STORY_GENERATION_PROMPT_TEMPLATE, STORY_CONTINUATION_PROMPT_TEMPLATE, STORY_CONCLUSION_PROMPT_TEMPLATE
+from app.core.constants import AI_MODEL, PRO_AGENT_MODEL, STORY_GENERATION_PROMPT_TEMPLATE, STORY_CONTINUATION_PROMPT_TEMPLATE, STORY_CONCLUSION_PROMPT_TEMPLATE
 from app.utils.system import get_system_prompt_from_env
 from typing import Any
 import logging
@@ -17,10 +17,10 @@ class AIService:
     def __init__(self):
         self.client = AsyncOpenAI(api_key=OPENAI_API_KEY, timeout=60.0)
 
-    async def _generate(self, prompt: str, response_format: Any):
+    async def _generate(self, prompt: str, response_format: Any, use_pro_agent: bool = False):
         try:
             response = await self.client.beta.chat.completions.parse(
-                model=AI_MODEL,
+                model=PRO_AGENT_MODEL if use_pro_agent else AI_MODEL,
                 messages=[
                     {"role": "system", "content": prompt},
                 ],
@@ -29,14 +29,14 @@ class AIService:
         except APIError as e:
             raise AIError(e) from e
             
-            # 2. Собираем метрики токенов
+        # Collect token usage metrics
         usage_info = {
             "prompt_tokens": response.usage.prompt_tokens,
             "completion_tokens": response.usage.completion_tokens,
             "total_tokens": response.usage.total_tokens,
         }
         
-        # Логируем прямо здесь (для быстрой отладки в консоли)
+        # Log token usage metrics
         print(f"📊 [Token Usage] Prompt: {usage_info['prompt_tokens']} | "
             f"Completion: {usage_info['completion_tokens']} | "
             f"Total: {usage_info['total_tokens']}")  
@@ -49,11 +49,11 @@ class AIService:
             params={
                 "hero": hero,
                 "setting": setting, 
-                "style": style
+                "style": style,
             }, 
             env_key=STORY_GENERATION_PROMPT_TEMPLATE
         )
-        response = await self._generate(system_prompt, StoryResponse)
+        response = await self._generate(system_prompt, StoryResponse, True)
         return response.choices[0].message.parsed
 
     # Generate next chapter

@@ -5,15 +5,19 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database.database import get_db
 from app.services.story_service import StoryService
+from app.services.story_settings_service import StorySettingsService
 import app.database.models as models
+from app.api.v1.endpoints.settings import get_story_settings_service
 
 router = APIRouter()
 
 def get_story_service(db: Session = Depends(get_db)) -> StoryService:
     return StoryService(db)
 
+#### STORIES ENDPOINTS ####
+
 ### Get all stories: GET /api/v1/stories ###
-@router.get("/", response_model=List[StoryListSchema])
+@router.get("", response_model=List[StoryListSchema])
 def get_all_stories(
     story_service: StoryService = Depends(get_story_service),
     current_user: models.User = Depends(get_current_user)
@@ -40,13 +44,20 @@ def update_story(
     return story_service.update_story(story_id, payload, user=current_user)
 
 ### Create a story: POST /api/v1/stories ###
-@router.post("/", response_model=StoryDetailSchema)
+@router.post("", response_model=StoryDetailSchema)
 async def create_story(
     payload: StoryCreateRequest,
     story_service: StoryService = Depends(get_story_service),
+    settings_service: StorySettingsService = Depends(get_story_settings_service),
     current_user: models.User = Depends(get_current_user)
 ) -> StoryDetailSchema:
-    return await story_service.create_story(payload, user=current_user)   
+    resolved = settings_service.resolve(
+        language=payload.language,
+        hero_id=payload.hero,
+        setting_id=payload.setting,
+        style_id=payload.style,
+    )
+    return await story_service.create_story(user=current_user, payload=resolved)   
 
 ### Delete a story: DELETE /api/v1/stories/{story_id} ###
 @router.delete("/{story_id}", status_code=status.HTTP_204_NO_CONTENT)
