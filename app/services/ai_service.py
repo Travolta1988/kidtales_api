@@ -1,7 +1,14 @@
-from app.schemas.story import StoryResponse, ChapterGenerationSchema
+from app.schemas.story import Language
+from app.schemas.ai import AIGeneratedStoryResponse, AIGeneratedChapterResponse
 from openai import AsyncOpenAI, APIError
 from app.core.config import OPENAI_API_KEY
-from app.core.constants import AI_MODEL, PRO_AGENT_MODEL, STORY_GENERATION_PROMPT_TEMPLATE, STORY_CONTINUATION_PROMPT_TEMPLATE, STORY_CONCLUSION_PROMPT_TEMPLATE
+from app.core.constants import (
+    AI_MODEL, 
+    PRO_AGENT_MODEL,
+    STORY_GENERATION_PROMPT_TEMPLATE,
+    STORY_CONTINUATION_PROMPT_TEMPLATE,
+    STORY_CONCLUSION_PROMPT_TEMPLATE,
+)
 from app.utils.system import get_system_prompt_from_env
 from typing import Any
 import logging
@@ -44,16 +51,17 @@ class AIService:
         return response
 
     # Generate story
-    async def generate_story(self, hero: str, setting: str, style: str) -> StoryResponse:
+    async def generate_story(self, hero: str, setting: str, style: str, language: Language) -> AIGeneratedStoryResponse:
         system_prompt = get_system_prompt_from_env(
             params={
                 "hero": hero,
                 "setting": setting, 
                 "style": style,
+                "language": language,
             }, 
-            env_key=STORY_GENERATION_PROMPT_TEMPLATE
+            env_key=STORY_GENERATION_PROMPT_TEMPLATE[language]
         )
-        response = await self._generate(system_prompt, StoryResponse, True)
+        response = await self._generate(system_prompt, AIGeneratedStoryResponse, True)
         return response.choices[0].message.parsed
 
     # Generate next chapter
@@ -67,7 +75,7 @@ class AIService:
         previous_chapter_content: str,
         chapter_description: str,
         next_option: str
-    ) -> ChapterGenerationSchema:
+    ) -> AIGeneratedChapterResponse:
 
         print(f"Next option: {next_option}")
         system_prompt = get_system_prompt_from_env(
@@ -81,9 +89,9 @@ class AIService:
                 "chapter_description": chapter_description,
                 "next_option": next_option
             },
-            env_key=STORY_CONTINUATION_PROMPT_TEMPLATE
+            env_key=STORY_CONTINUATION_PROMPT_TEMPLATE['uk']
         )
-        response = await self._generate(system_prompt, ChapterGenerationSchema)
+        response = await self._generate(system_prompt, AIGeneratedChapterResponse)
         return response.choices[0].message.parsed
 
     # Generate story end
@@ -95,7 +103,7 @@ class AIService:
         full_story_context: str, 
         previous_chapter_content: str,
         chapter_description: str
-    ) -> ChapterGenerationSchema:
+    ) -> AIGeneratedChapterResponse:
         system_prompt = get_system_prompt_from_env(
             params={
                 "hero": hero, 
@@ -106,9 +114,9 @@ class AIService:
                 "previous_chapter_content": previous_chapter_content,
                 "chapter_description": chapter_description
             },
-            env_key=STORY_CONCLUSION_PROMPT_TEMPLATE
+            env_key=STORY_CONCLUSION_PROMPT_TEMPLATE['uk']
         )
-        response = await self._generate(system_prompt, ChapterGenerationSchema)
+        response = await self._generate(system_prompt, AIGeneratedChapterResponse)
         return response.choices[0].message.parsed
 
 ai_service = AIService()

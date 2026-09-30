@@ -4,7 +4,8 @@ import app.database.models as models
 import logging
 from app.core.errors import ERRORS, AI_ERRORS
 from fastapi import Depends, HTTPException, status
-from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryUpdateRequest, ChapterListSchema, ChapterGenerationSchema, StoryOptionSchema
+from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryUpdateRequest, ChapterListSchema, StoryOptionSchema
+from app.schemas.ai import AIGeneratedChapterResponse
 from app.schemas.story_settings import ResolvedStoryInput
 from sqlalchemy.orm import Session
 from app.services.ai_service import ai_service, AIError
@@ -18,10 +19,10 @@ class StoryService:
         self.db = db   
 
     def get_all_stories(self, user: models.User) -> List[StoryListSchema]:
-        return self.db.query(models.Story).all()
+        return self.db.query(models.Story).filter(models.Story.user_id == user.id).all()
 
     def get_story_by_id(self, story_id: str, user: models.User) -> StoryDetailSchema:
-        story = self.db.query(models.Story).filter(models.Story.id == story_id).first()
+        story = self.db.query(models.Story).filter(models.Story.id == story_id, models.Story.user_id == user.id).first()
         if not story:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, 
@@ -61,7 +62,8 @@ class StoryService:
             story = await ai_service.generate_story(
                 hero=payload.hero,
                 setting=payload.setting,
-                style=payload.style
+                style=payload.style,
+                language=payload.language,
             )
         except AIError:
             logger.exception("AI error while generating story")
@@ -147,7 +149,7 @@ class StoryService:
                 detail=ERRORS["STORY_DELETION_ERROR"]
             )   
 
-    async def generate_next_chapter(self, story_id: str, user: models.User, payload: StoryOptionSchema) -> ChapterGenerationSchema:
+    async def generate_next_chapter(self, story_id: str, user: models.User, payload: StoryOptionSchema) -> AIGeneratedChapterResponse:
         # Check if user has sufficient credits
         if user.subscription_credits + user.purchased_credits < 1:
             raise HTTPException(
@@ -199,7 +201,7 @@ class StoryService:
                 next_option=payload.text,
             )
 
-        new_chapter = ChapterGenerationSchema(
+        new_chapter = AIGeneratedChapterResponse(
             content=chapter.content,
             chapter_description=chapter.chapter_description,
             title=chapter.title,

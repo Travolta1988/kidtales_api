@@ -1,6 +1,6 @@
 from app.api.deps import get_current_user
 from fastapi import APIRouter, Depends, status
-from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryCreateRequest, StoryUpdateRequest, ChapterListSchema, ChapterGenerationSchema, StoryOptionSchema
+from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryCreateRequest, StoryUpdateRequest, ChapterListSchema, StoryOptionSchema
 from sqlalchemy.orm import Session
 from typing import List
 from app.database.database import get_db
@@ -8,6 +8,7 @@ from app.services.story_service import StoryService
 from app.services.story_settings_service import StorySettingsService
 import app.database.models as models
 from app.api.v1.endpoints.settings import get_story_settings_service
+from app.schemas.ai import AIGeneratedChapterResponse
 
 router = APIRouter()
 
@@ -69,13 +70,13 @@ def delete_story(
     story_service.delete_story(story_id, user=current_user)
 
 ### Generate next chapter for a story: POST /api/v1/stories/{story_id}/continue ###
-@router.post("/{story_id}/continue", response_model=ChapterGenerationSchema)
+@router.post("/{story_id}/continue", response_model=AIGeneratedChapterResponse)
 async def generate_next_chapter(
     story_id: str,
     payload: StoryOptionSchema,  # <- Принимаем тело запроса с опцией продолжения
     story_service: StoryService = Depends(get_story_service),
     current_user: models.User = Depends(get_current_user)
-) -> ChapterGenerationSchema:
+) -> AIGeneratedChapterResponse:
     return await story_service.generate_next_chapter(story_id, user=current_user, payload=payload)
 
 ### Get all chapters of story: GET /api/v1/stories/{story_id}/chapters ###

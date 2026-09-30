@@ -49,7 +49,8 @@ class User(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=True)
+    google_sub = Column(String, unique=True, index=True, nullable=True)
 
     subscription_credits = Column(Integer, default=5)
     purchased_credits = Column(Integer, default=0)

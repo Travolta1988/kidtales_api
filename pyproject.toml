@@ -11,7 +11,9 @@ dependencies = [
     "python-dotenv>=1.2.1",
     "sqlalchemy>=2.0.52",
     "pwdlib[argon2]",
-    "pyjwt"
+    "pyjwt",
+    "google-auth",
+    "requests>=2.34.2",
 ]
 
 [dependency-groups]
