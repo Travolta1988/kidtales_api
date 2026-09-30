@@ -5,8 +5,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+  caddy:
+    image: caddy:2
     ports:
-      - "8000:8000"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
     restart: unless-stopped
 
   db:
@@ -25,3 +34,5 @@ services:
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
