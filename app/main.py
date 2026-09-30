@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 
 app = FastAPI(
-    title="Fairytale AI API",
+    title="Kidtales AI API",
     description="API for fairy tales AI interactive generation",
     version="1.0.0"
 )
