@@ -18,6 +18,16 @@ services:
       - api
     restart: unless-stopped
 
+  landing:
+    image: node:22-alpine
+    working_dir: /app
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "4173"
+    volumes:
+      - /var/www/kidtales-landing:/app
+    restart: unless-stopped
+
   db:
     image: postgres:16
     env_file: .env.prod

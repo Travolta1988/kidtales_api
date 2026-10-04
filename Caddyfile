@@ -1,3 +1,7 @@
+kidtales.ai, www.kidtales.ai {
+    reverse_proxy landing:4173
+}
+
 api.kidtales.ai {
     reverse_proxy api:8000
 }
