@@ -88,3 +88,10 @@ PROMPTS = {
     "STORY_CONTINUATION_PROMPT_TEMPLATE_UK": STORY_CONTINUATION_PROMPT_TEMPLATE_UK,
     "STORY_CONCLUSION_PROMPT_TEMPLATE_UK": STORY_CONCLUSION_PROMPT_TEMPLATE_UK,
 }
+
+COVER_IMAGE_PROMPT_TEMPLATE_EN="""
+cozy fairytale atmosphere, soft warm lighting, vibrant pastel colors,
+clean lines, hand-drawn digital art style, high quality.
+Hero should be located closer to the right side of the image!!!.
+Style of the image should be like it is soviet animator Vladimir Ivanovich Zarubin's style.
+"""

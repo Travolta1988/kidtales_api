@@ -1,6 +1,15 @@
 from app.api.deps import get_current_user
-from fastapi import APIRouter, Depends, status
-from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryCreateRequest, StoryUpdateRequest, ChapterListSchema, StoryOptionSchema
+from fastapi import APIRouter, Depends, status, BackgroundTasks
+from fastapi.responses import StreamingResponse
+from app.schemas.story import (
+    StoryListSchema, 
+    StoryDetailSchema, 
+    StoryCreateRequest, 
+    StoryUpdateRequest, 
+    ChapterListSchema, 
+    StoryOptionSchema,
+)
+from app.schemas.story_settings import Language
 from sqlalchemy.orm import Session
 from typing import List
 from app.database.database import get_db
@@ -45,20 +54,62 @@ def update_story(
     return story_service.update_story(story_id, payload, user=current_user)
 
 ### Create a story: POST /api/v1/stories ###
-@router.post("", response_model=StoryDetailSchema)
+@router.post("")
 async def create_story(
     payload: StoryCreateRequest,
     story_service: StoryService = Depends(get_story_service),
     settings_service: StorySettingsService = Depends(get_story_settings_service),
-    current_user: models.User = Depends(get_current_user)
-) -> StoryDetailSchema:
+    current_user: models.User = Depends(get_current_user),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+) -> StreamingResponse:
     resolved = settings_service.resolve(
         language=payload.language,
         hero_id=payload.hero,
         setting_id=payload.setting,
         style_id=payload.style,
     )
-    return await story_service.create_story(user=current_user, payload=resolved)   
+    cover_image_generation_payload = settings_service.resolve(
+        language=Language.en,
+        hero_id=payload.hero,
+        setting_id=payload.setting,
+        style_id=payload.style,
+    )
+    story_service.ensure_credits(current_user)
+    return StreamingResponse(
+        story_service.stream_create_story(
+            user=current_user,
+            payload=resolved,
+            cover_image_generation_payload=cover_image_generation_payload,
+            background_tasks=background_tasks
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )   
+
+### Generate next chapter for a story: POST /api/v1/stories/{story_id}/continue ###
+@router.post("/{story_id}/continue")
+async def generate_next_chapter(
+    story_id: str,
+    payload: StoryOptionSchema,  # <- Принимаем тело запроса с опцией продолжения
+    story_service: StoryService = Depends(get_story_service),
+    current_user: models.User = Depends(get_current_user)
+) -> StreamingResponse:
+    story_service.ensure_credits(current_user)
+    return StreamingResponse(
+        story_service.stream_create_next_chapter(
+            story_id=story_id,
+            user=current_user,
+            payload=payload,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 ### Delete a story: DELETE /api/v1/stories/{story_id} ###
 @router.delete("/{story_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -68,16 +119,6 @@ def delete_story(
     current_user: models.User = Depends(get_current_user)
 ) -> None:
     story_service.delete_story(story_id, user=current_user)
-
-### Generate next chapter for a story: POST /api/v1/stories/{story_id}/continue ###
-@router.post("/{story_id}/continue", response_model=AIGeneratedChapterResponse)
-async def generate_next_chapter(
-    story_id: str,
-    payload: StoryOptionSchema,  # <- Принимаем тело запроса с опцией продолжения
-    story_service: StoryService = Depends(get_story_service),
-    current_user: models.User = Depends(get_current_user)
-) -> AIGeneratedChapterResponse:
-    return await story_service.generate_next_chapter(story_id, user=current_user, payload=payload)
 
 ### Get all chapters of story: GET /api/v1/stories/{story_id}/chapters ###
 @router.get("/{story_id}/chapters", response_model=List[ChapterListSchema])

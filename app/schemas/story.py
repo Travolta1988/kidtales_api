@@ -35,6 +35,8 @@ class StoryListSchema(BaseModel):
     hero: str
     setting: str
     style: str
+    generated_chapters_count: int
+    image_url: Optional[str] = None
     category: str
     full_story_context: str
     short_story_context: str

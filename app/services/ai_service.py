@@ -1,6 +1,6 @@
 from app.schemas.story import Language
-from app.schemas.ai import AIGeneratedStoryResponse, AIGeneratedChapterResponse
 from openai import AsyncOpenAI, APIError
+from app.services.streams import StoryGenerationStream, ChapterGenerationStream
 from app.core.config import OPENAI_API_KEY
 from app.core.constants import (
     AI_MODEL, 
@@ -26,32 +26,27 @@ class AIService:
 
     async def _generate(self, prompt: str, response_format: Any, use_pro_agent: bool = False):
         try:
-            response = await self.client.beta.chat.completions.parse(
+            response = await self.client.chat.beta.completions.parse(
                 model=PRO_AGENT_MODEL if use_pro_agent else AI_MODEL,
                 messages=[
                     {"role": "system", "content": prompt},
                 ],
-                    response_format=response_format
+                stream=True,
+                response_format=response_format,
             )
         except APIError as e:
             raise AIError(e) from e
-            
-        # Collect token usage metrics
-        usage_info = {
-            "prompt_tokens": response.usage.prompt_tokens,
-            "completion_tokens": response.usage.completion_tokens,
-            "total_tokens": response.usage.total_tokens,
-        }
-        
-        # Log token usage metrics
-        print(f"📊 [Token Usage] Prompt: {usage_info['prompt_tokens']} | "
-            f"Completion: {usage_info['completion_tokens']} | "
-            f"Total: {usage_info['total_tokens']}")  
+
+        if response.usage:
+            print(
+                f"📊 [Token Usage] Prompt: {response.usage.prompt_tokens} | "
+                f"Completion: {response.usage.completion_tokens} | "
+                f"Total: {response.usage.total_tokens}"
+            )
 
         return response
 
-    # Generate story
-    async def generate_story(self, hero: str, setting: str, style: str, language: Language) -> AIGeneratedStoryResponse:
+    def stream_story(self, hero: str, setting: str, style: str, language: Language) -> StoryGenerationStream:
         system_prompt = get_system_prompt_from_env(
             params={
                 "hero": hero,
@@ -61,11 +56,10 @@ class AIService:
             }, 
             env_key=STORY_GENERATION_PROMPT_TEMPLATE[language]
         )
-        response = await self._generate(system_prompt, AIGeneratedStoryResponse, True)
-        return response.choices[0].message.parsed
+        return StoryGenerationStream(self.client, system_prompt, PRO_AGENT_MODEL)
 
     # Generate next chapter
-    async def generate_next_chapter(
+    async def stream_chapter_next(
         self, 
         hero: str, 
         setting: str, 
@@ -75,9 +69,9 @@ class AIService:
         previous_chapter_content: str,
         chapter_description: str,
         next_option: str
-    ) -> AIGeneratedChapterResponse:
-
+    ) -> ChapterGenerationStream:
         print(f"Next option: {next_option}")
+
         system_prompt = get_system_prompt_from_env(
             params={
                 "hero": hero, 
@@ -91,11 +85,10 @@ class AIService:
             },
             env_key=STORY_CONTINUATION_PROMPT_TEMPLATE['uk']
         )
-        response = await self._generate(system_prompt, AIGeneratedChapterResponse)
-        return response.choices[0].message.parsed
+        return ChapterGenerationStream(self.client, system_prompt)
 
     # Generate story end
-    async def generate_story_conclusion(self, 
+    async def stream_chapter_conclusion(self, 
         hero: str, 
         setting: str, 
         style: str, 
@@ -103,7 +96,7 @@ class AIService:
         full_story_context: str, 
         previous_chapter_content: str,
         chapter_description: str
-    ) -> AIGeneratedChapterResponse:
+    ) -> ChapterGenerationStream:
         system_prompt = get_system_prompt_from_env(
             params={
                 "hero": hero, 
@@ -116,7 +109,6 @@ class AIService:
             },
             env_key=STORY_CONCLUSION_PROMPT_TEMPLATE['uk']
         )
-        response = await self._generate(system_prompt, AIGeneratedChapterResponse)
-        return response.choices[0].message.parsed
+        return ChapterGenerationStream(self.client, system_prompt)
 
 ai_service = AIService()

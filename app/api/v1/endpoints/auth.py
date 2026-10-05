@@ -1,9 +1,10 @@
+from app.core.errors import AUTH_ERRORS
 from pydantic import BaseModel
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from app.api.deps import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
-from app.schemas.user import Token, UserCreate, UserResponse
+from app.schemas.user import Token, UserCreate, UserResponse, GoogleLogin
 from app.database.database import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -23,7 +24,8 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     )
     if db_user:
         raise HTTPException(
-            status_code=400, detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=AUTH_ERRORS["EMAIL_ALREADY_REGISTERED_ERROR"]
         )
 
     new_user = models.User(
@@ -54,7 +56,7 @@ def login(
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect email or password",
+            detail=AUTH_ERRORS["INCORRECT_EMAIL_OR_PASSWORD_ERROR"]
         )
 
     access_token = create_access_token(data={"sub": user.id})
@@ -63,9 +65,6 @@ def login(
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: models.User = Depends(get_current_user)):
     return current_user
-
-class GoogleLogin(BaseModel):
-    id_token: str
 
 # /api/v1/auth/login -> login
 @router.post("/google")
@@ -77,10 +76,16 @@ def google_login(body: GoogleLogin, db: Session = Depends(get_db)):
             audience='205178107408-b4m42heblsoo5s1b951q1ueuueq0548v.apps.googleusercontent.com',
         )
     except Exception:
-        raise HTTPException(status_code=401, detail="Invalid Google token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AUTH_ERRORS["INVALID_GOOGLE_TOKEN_ERROR"]
+        )
 
     if not info.get("email_verified"):
-        raise HTTPException(status_code=401, detail="Email is not verified")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AUTH_ERRORS["EMAIL_NOT_VERIFIED_ERROR"]
+        )
 
     google_sub = info["sub"]
     email = info["email"]

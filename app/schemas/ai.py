@@ -3,15 +3,6 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
-class Categories(str, Enum):
-    "fantasy",
-    "adventure",
-    "mystery",
-    "horror",
-    "romance",
-    "science fiction",
-    "dystopian",
-
 class AIStoryOption(BaseModel):
     id: str
     text: str
@@ -20,8 +11,6 @@ class AIStoryOption(BaseModel):
         from_attributes = True
 
 class AIGeneratedChapterList(BaseModel):
-    id: int
-    chapter_number: int
     title: Optional[str] = Field(
         None, 
         min_length=1, 
@@ -35,22 +24,24 @@ class AIGeneratedChapterList(BaseModel):
         min_length=3,
         max_length=3,
     )
+    id: int
+    chapter_number: int
 
     class Config:
         from_attributes = True        
 
 class AIGeneratedStoryResponse(BaseModel):
-    id: str
+    chapters: List[AIGeneratedChapterList]
     title: str
     hero: str
     setting: str
     style: str
     category: str
-    full_story_context: str
     short_story_context: str
+    full_story_context: str
     reading_time_minutes: int
     is_favorite: bool
-    chapters: List[AIGeneratedChapterList] = []
+    id: str
     created_at: datetime
     updated_at: datetime
     class Config:
@@ -58,13 +49,21 @@ class AIGeneratedStoryResponse(BaseModel):
 
 class AIGeneratedChapterResponse(BaseModel):
     title: str
-    content: str 
+    content: str = Field(
+        ..., 
+        description="""
+        Chapter content should be minimum 600 words and maximum 700 words.
+        Content should not repeat the same information as the previous chapter.
+        Content should be interesting with some humor and some action.
+        """
+    )
     chapter_description: str
     full_story_context: str
     next_options: List[AIStoryOption] = Field(
         ...,
         min_length=3,
         max_length=3,
+        description="Next fields should not repeat the same options as the previous chapter."
     )
 
     class Config:

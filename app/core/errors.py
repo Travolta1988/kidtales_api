@@ -10,6 +10,14 @@ ERRORS = {
     "INSUFFICIENT_CREDITS_ERROR": """Insufficient credits to generate story""",
     "USER_NOT_FOUND_ERROR": """User not found""",
     "STORY_SETTINGS_NOT_FOUND_ERROR": """Story settings not found""",
+    "COVER_IMAGE_GENERATION_ERROR": """Failed to generate cover image""",
+}
+
+AUTH_ERRORS = {
+    "EMAIL_ALREADY_REGISTERED_ERROR": """Email already registered""",
+    "INCORRECT_EMAIL_OR_PASSWORD_ERROR": """Incorrect email or password""",
+    "EMAIL_NOT_VERIFIED_ERROR": """Email is not verified""",
+    "INVALID_GOOGLE_TOKEN_ERROR": """Invalid Google token""",
 }
 
 AI_ERRORS = {
