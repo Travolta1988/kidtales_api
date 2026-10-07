@@ -1,7 +1,9 @@
 from app.utils.system import get_system_prompt_from_env
 import asyncio
+import logging
 import httpx
 import boto3
+from botocore.config import Config
 from app.database.database import SessionLocal
 import app.database.models as models
 from app.core.constants import FLUX_SCHNELL_PREDICTIONS_URL
@@ -13,6 +15,9 @@ from app.core.config import (
     R2_BUCKET, 
     R2_PUBLIC_BASE_URL,
 )
+
+logger = logging.getLogger(__name__)
+_cover_tasks: set[asyncio.Task] = set()
 
 def build_flux_prompt(hero: str, setting: str) -> str:
         return get_system_prompt_from_env(
@@ -65,13 +70,35 @@ async def generate_cover_image(prompt: str) -> str:
             return output[0]
         return output
 
+def _require_r2_config() -> None:
+    missing = [
+        name
+        for name, value in (
+            ("S3_ENDPOINT_URL", S3_ENDPOINT_URL),
+            ("R2_ACCESS_KEY_ID", R2_ACCESS_KEY_ID),
+            ("R2_SECRET_ACCESS_KEY", R2_SECRET_ACCESS_KEY),
+            ("R2_BUCKET", R2_BUCKET),
+            ("R2_PUBLIC_BASE_URL", R2_PUBLIC_BASE_URL),
+        )
+        if not value
+    ]
+    if missing:
+        raise RuntimeError(f"R2 is not configured: {', '.join(missing)}")
+
 def _r2_client():
+    # boto3 >= 1.36 sends checksum headers on every PutObject.
+    # Cloudflare R2 rejects them unless checksums are limited to required ops.
     return boto3.client(
         "s3",
         endpoint_url=S3_ENDPOINT_URL,
         aws_access_key_id=R2_ACCESS_KEY_ID,
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
         region_name="auto",
+        config=Config(
+            signature_version="s3v4",
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
+        ),
     )
 
 async def upload_cover(story_id: str, source_url: str) -> str:
@@ -91,13 +118,23 @@ async def upload_cover(story_id: str, source_url: str) -> str:
     return f"{base}/{key}"    
 
 async def save_cover(story_id: str, prompt: str) -> None:
-    source_url = await generate_cover_image(prompt)
-    image_url = await upload_cover(story_id, source_url)
-
-    db = SessionLocal()
     try:
-        story = db.query(models.Story).filter(models.Story.id == story_id).one()
-        story.image_url = image_url
-        db.commit()
-    finally:
-        db.close()        
+        _require_r2_config()
+        source_url = await generate_cover_image(prompt)
+        image_url = await upload_cover(story_id, source_url)
+
+        db = SessionLocal()
+        try:
+            story = db.query(models.Story).filter(models.Story.id == story_id).one()
+            story.image_url = image_url
+            db.commit()
+        finally:
+            db.close()
+        logger.info("Saved cover for story %s", story_id)
+    except Exception:
+        logger.exception("Cover image generation failed for story %s", story_id)
+
+def schedule_save_cover(story_id: str, prompt: str) -> None:
+    task = asyncio.create_task(save_cover(story_id, prompt))
+    _cover_tasks.add(task)
+    task.add_done_callback(_cover_tasks.discard)
