@@ -22,6 +22,7 @@ class StoryGenerationStream:
     async def __aiter__(self) -> AsyncIterator[str]:
         try:
             async with self._client.chat.completions.stream(
+                temperature=0.7,
                 model=self._model,
                 messages=[
                     {"role": "system", "content": self._prompt},
@@ -56,6 +57,7 @@ class ChapterGenerationStream:
     async def __aiter__(self) -> AsyncIterator[str]:
         try:
             async with self._client.chat.completions.stream(
+                temperature=0.7,
                 model=self._model,
                 messages=[
                     {"role": "system", "content": self._prompt},

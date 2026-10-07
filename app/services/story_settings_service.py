@@ -9,8 +9,6 @@ from app.schemas.story_settings import (
     ResolvedStoryInput,
     StorySettingsSchema,
 )
-
-
 class StorySettingsService:
     def __init__(self, db: Session):
         self.db = db
@@ -35,6 +33,7 @@ class StorySettingsService:
         hero_id: str,
         setting_id: str,
         style_id: str,
+        goal_id: str,
     ) -> ResolvedStoryInput:
         catalog = self.get_story_settings(language)
         return ResolvedStoryInput(
@@ -42,9 +41,11 @@ class StorySettingsService:
             hero_id=hero_id,
             setting_id=setting_id,
             style_id=style_id,
+            goal_id=goal_id,
             hero=self._title_for(catalog.heroes, hero_id, "hero"),
             setting=self._title_for(catalog.locations, setting_id, "setting"),
             style=self._title_for(catalog.styles, style_id, "style"),
+            goal=self._title_for(catalog.goals, goal_id, "goal"),
         )
 
     @staticmethod

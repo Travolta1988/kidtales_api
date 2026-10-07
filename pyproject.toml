@@ -16,6 +16,7 @@ dependencies = [
     "requests>=2.34.2",
     "replicate>=1.0.7",
     "boto3>=1.43.108",
+    "aioredis>=2.0.1",
 ]
 
 [dependency-groups]

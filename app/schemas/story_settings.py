@@ -1,5 +1,5 @@
 from enum import Enum
-
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -14,12 +14,14 @@ class CatalogItemSchema(BaseModel):
     title: str
     hint: str
     color: int
+    image: Optional[str] = None
 
 
 class StorySettingsSchema(BaseModel):
     heroes: list[CatalogItemSchema]
     locations: list[CatalogItemSchema]
     styles: list[CatalogItemSchema]
+    goals: list[CatalogItemSchema]
 
 
 class ResolvedStoryInput(BaseModel):
@@ -27,6 +29,8 @@ class ResolvedStoryInput(BaseModel):
     hero_id: str
     setting_id: str
     style_id: str
+    goal_id: str
     hero: str
     setting: str
     style: str
+    goal: str

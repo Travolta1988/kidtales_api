@@ -1,11 +1,10 @@
-import os
+from app.utils.system import get_system_prompt_from_env
 import asyncio
 import httpx
 import boto3
 from app.database.database import SessionLocal
 import app.database.models as models
 from app.core.constants import FLUX_SCHNELL_PREDICTIONS_URL
-from app.core.prompts import COVER_IMAGE_PROMPT_TEMPLATE_EN
 from app.core.config import (
     REPLICATE_API_TOKEN, 
     S3_ENDPOINT_URL, 
@@ -15,11 +14,14 @@ from app.core.config import (
     R2_PUBLIC_BASE_URL,
 )
 
-def build_flux_prompt(hero: str, setting: str, action: str = "exploring the area") -> str:
-        style_prefix = "Whimsical children's book storybook illustration of"
-        style_suffix = COVER_IMAGE_PROMPT_TEMPLATE_EN
-
-        return f"{style_prefix} {hero}, {action} in {setting}. {style_suffix}"
+def build_flux_prompt(hero: str, setting: str) -> str:
+        return get_system_prompt_from_env(
+            env_key="COVER_IMAGE_PROMPT_TEMPLATE_EN",
+            params={
+                "hero": hero,
+                "setting": setting
+            }
+        )
 
 async def generate_cover_image(prompt: str) -> str:
     token = REPLICATE_API_TOKEN

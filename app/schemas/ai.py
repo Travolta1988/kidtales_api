@@ -36,6 +36,7 @@ class AIGeneratedStoryResponse(BaseModel):
     hero: str
     setting: str
     style: str
+    goal: str
     category: str
     short_story_context: str
     full_story_context: str

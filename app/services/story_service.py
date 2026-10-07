@@ -2,12 +2,11 @@ from app.schemas.story import ChapterSchema
 import json
 import uuid
 from collections.abc import AsyncIterator
-from datetime import datetime
 import app.database.models as models
 import logging
 from app.core.errors import ERRORS, AI_ERRORS
 from fastapi import Depends, HTTPException, status, BackgroundTasks
-from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryUpdateRequest, ChapterListSchema, StoryOptionSchema
+from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryUpdateRequest, ChapterListSchema
 from app.schemas.story_settings import ResolvedStoryInput
 from sqlalchemy.orm import Session
 from app.services.ai_service import ai_service, AIError
@@ -127,7 +126,7 @@ class StoryService:
 
     # STREAMING METHODS #
     # stream_create_story -> AsyncIterator[str]
-    # generate_next_chapter -> AIGeneratedChapterResponse
+    # generate_next_chapter -> AsyncIterator[str]
 
     ### Create a story ###
     async def stream_create_story(
@@ -141,6 +140,7 @@ class StoryService:
             hero=payload.hero,
             setting=payload.setting,
             style=payload.style,
+            goal=payload.goal,
             language=payload.language,
         )
 
@@ -173,14 +173,15 @@ class StoryService:
             hero=payload.hero,
             setting=payload.setting,
             style=payload.style,
+            goal=payload.goal,
             generated_chapters_count=len(story.chapters),
             image_url=None,
+            language=payload.language,
             category=story.category,
             full_story_context=story.full_story_context,
             short_story_context=story.short_story_context,
             reading_time_minutes=story.reading_time_minutes,
             is_favorite=False,
-            created_at=story.created_at or datetime.now(),
             chapters=[
                 models.StoryChapter(
                     chapter_number=index,
@@ -215,7 +216,13 @@ class StoryService:
         yield _sse({"story": detail.model_dump(mode="json")})
 
     ### Generate a next chapter ###
-    async def stream_create_next_chapter(self, story_id: str, user: models.User, payload: StoryOptionSchema) -> AsyncIterator[str]:
+    async def stream_create_next_chapter(
+        self,
+        story_id: str,
+        user: models.User,
+        payload: ResolvedStoryInput,
+        next_option: str,
+    ) -> AsyncIterator[str]:
         story: models.Story | None = self.db.query(models.Story).filter(models.Story.id == story_id, models.Story.user_id == user.id).first()
 
         if not story:
@@ -241,24 +248,28 @@ class StoryService:
 
         if next_number == 10:
             stream_chapter = await ai_service.stream_chapter_conclusion(
-                hero=story.hero,
-                setting=story.setting,
-                style=story.style,
+                hero=payload.hero,
+                setting=payload.setting,
+                style=payload.style,
+                goal=payload.goal,
                 full_story_context=story.full_story_context,
                 chapter_number=10,
                 previous_chapter_content=last_chapter.content,
-                chapter_description=last_chapter.chapter_description
+                chapter_description=last_chapter.chapter_description,
+                language=payload.language,
             )
         else:
             stream_chapter = await ai_service.stream_chapter_next(
-                hero=story.hero,
-                setting=story.setting,
+                hero=payload.hero,
+                setting=payload.setting,
                 full_story_context=story.full_story_context,
-                style=story.style,
+                style=payload.style,
+                goal=payload.goal,
                 chapter_number=next_number,
                 previous_chapter_content=last_chapter.content,
                 chapter_description=last_chapter.chapter_description,
-                next_option=payload.text,
+                next_option=next_option,
+                language=payload.language,
             )
 
         try:

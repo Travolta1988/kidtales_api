@@ -6,8 +6,8 @@ from app.schemas.story import (
     StoryDetailSchema, 
     StoryCreateRequest, 
     StoryUpdateRequest, 
-    ChapterListSchema, 
-    StoryOptionSchema,
+    ChapterListSchema,
+    ContinueStoryRequest,
 )
 from app.schemas.story_settings import Language
 from sqlalchemy.orm import Session
@@ -67,12 +67,14 @@ async def create_story(
         hero_id=payload.hero,
         setting_id=payload.setting,
         style_id=payload.style,
+        goal_id=payload.goal,
     )
     cover_image_generation_payload = settings_service.resolve(
         language=Language.en,
         hero_id=payload.hero,
         setting_id=payload.setting,
         style_id=payload.style,
+        goal_id=payload.goal,
     )
     story_service.ensure_credits(current_user)
     return StreamingResponse(
@@ -93,7 +95,7 @@ async def create_story(
 @router.post("/{story_id}/continue")
 async def generate_next_chapter(
     story_id: str,
-    payload: StoryOptionSchema,  # <- Принимаем тело запроса с опцией продолжения
+    payload: ContinueStoryRequest,
     story_service: StoryService = Depends(get_story_service),
     current_user: models.User = Depends(get_current_user)
 ) -> StreamingResponse:
@@ -103,6 +105,7 @@ async def generate_next_chapter(
             story_id=story_id,
             user=current_user,
             payload=payload,
+            next_option=payload.text,
         ),
         media_type="text/event-stream",
         headers={

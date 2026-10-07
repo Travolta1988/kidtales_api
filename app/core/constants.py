@@ -11,7 +11,7 @@ STORY_CONCLUSION_PROMPT_TEMPLATE = {
     "uk": "STORY_CONCLUSION_PROMPT_TEMPLATE_UK",
 }
 
-AI_MODEL = "gpt-4o"
+AI_MODEL = "gpt-4o-mini"
 PRO_AGENT_MODEL = "gpt-4o"
 
 FLUX_SCHNELL_PREDICTIONS_URL = "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions"

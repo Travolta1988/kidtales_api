@@ -14,6 +14,8 @@ class Story(Base):
     hero = Column(String, nullable=False)
     setting = Column(String, nullable=False)
     style = Column(String, nullable=False)
+    goal = Column(String, nullable=False)
+    language = Column(String, nullable=False)
     generated_chapters_count = Column(Integer, default=0, nullable=False)
     category = Column(String, nullable=False)
     full_story_context = Column(Text, nullable=False)
