@@ -1,5 +1,5 @@
 from app.api.deps import get_current_user
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from app.schemas.story import (
     StoryListSchema, 
@@ -60,6 +60,7 @@ async def create_story(
     story_service: StoryService = Depends(get_story_service),
     settings_service: StorySettingsService = Depends(get_story_settings_service),
     current_user: models.User = Depends(get_current_user),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> StreamingResponse:
     resolved = settings_service.resolve(
         language=payload.language,
@@ -81,6 +82,7 @@ async def create_story(
             user=current_user,
             payload=resolved,
             cover_image_generation_payload=cover_image_generation_payload,
+            background_tasks=background_tasks,
         ),
         media_type="text/event-stream",
         headers={

@@ -5,14 +5,14 @@ from collections.abc import AsyncIterator
 import app.database.models as models
 import logging
 from app.core.errors import ERRORS, AI_ERRORS
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, BackgroundTasks
 from app.schemas.story import StoryListSchema, StoryDetailSchema, StoryUpdateRequest, ChapterListSchema
 from app.schemas.story_settings import ResolvedStoryInput
 from sqlalchemy.orm import Session
 from app.services.ai_service import ai_service, AIError
 from typing import List
 from app.database.database import get_db, SessionLocal
-from app.services.generate_cover_image import build_flux_prompt, schedule_save_cover
+from app.services.generate_cover_image import build_flux_prompt, save_cover
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +134,7 @@ class StoryService:
         user: models.User,
         payload: ResolvedStoryInput,
         cover_image_generation_payload,
+        background_tasks: BackgroundTasks,
     ) -> AsyncIterator[str]:
         story_stream = ai_service.stream_story(
             hero=payload.hero,
@@ -196,7 +197,8 @@ class StoryService:
         try:
             self.db.add(new_story)
             self.db.commit()
-            schedule_save_cover(
+            background_tasks.add_task(
+                save_cover,
                 new_story.id,
                 build_flux_prompt(
                     cover_image_generation_payload.hero,

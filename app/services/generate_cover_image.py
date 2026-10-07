@@ -17,7 +17,6 @@ from app.core.config import (
 )
 
 logger = logging.getLogger(__name__)
-_cover_tasks: set[asyncio.Task] = set()
 
 def build_flux_prompt(hero: str, setting: str) -> str:
         return get_system_prompt_from_env(
@@ -133,8 +132,3 @@ async def save_cover(story_id: str, prompt: str) -> None:
         logger.info("Saved cover for story %s", story_id)
     except Exception:
         logger.exception("Cover image generation failed for story %s", story_id)
-
-def schedule_save_cover(story_id: str, prompt: str) -> None:
-    task = asyncio.create_task(save_cover(story_id, prompt))
-    _cover_tasks.add(task)
-    task.add_done_callback(_cover_tasks.discard)
